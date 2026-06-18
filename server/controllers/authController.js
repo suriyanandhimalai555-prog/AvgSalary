@@ -1,6 +1,8 @@
+// src/controllers/authController.js
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createUser, findUserByEmail, getAllBranchUsers } from '../models/userModel.js';
+import { sendOnboardingEmail } from '../utils/emailService.js'; // Import your utility helper here
 
 // Register Admin (Via Postman)
 export const registerAdmin = async (req, res) => {
@@ -14,7 +16,6 @@ export const registerAdmin = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Forces role to be 'admin'
     const newAdmin = await createUser(name, email, hashedPassword, 'Headquarters', 'admin');
 
     res.status(201).json({ message: 'Admin registered successfully', user: newAdmin });
@@ -23,7 +24,7 @@ export const registerAdmin = async (req, res) => {
   }
 };
 
-// Onboard User (Created by Admin)
+// Onboard User (Created by Admin & Dispatches Credential Mail)
 export const onboardUser = async (req, res) => {
   const { name, email, password, branch } = req.body;
   try {
@@ -37,12 +38,26 @@ export const onboardUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Default role parameters fallback to 'user' inside model
+    // 1. Write the new user details to the PostgreSQL database
     const newUser = await createUser(name, email, hashedPassword, branch, 'user');
 
-    res.status(201).json({ message: 'User onboarded successfully', user: newUser });
+    // 2. Transmit the credential profile via Nodemailer service
+    // Pass the raw clean 'password' here so the user receives the readable password string
+    try {
+      await sendOnboardingEmail(email, name, password, branch);
+    } catch (emailError) {
+      console.error("Critical: User was made, but credential dispatch failed:", emailError);
+      // We return 211 status or a special notice so frontend knows email failed but user exists
+      return res.status(201).json({ 
+        message: 'User created successfully, but system failed to distribute credential mail.', 
+        user: newUser,
+        emailSent: false 
+      });
+    }
+
+    res.status(201).json({ message: 'User onboarded and identity mail transmitted successfully!', user: newUser, emailSent: true });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ message: 'Server Error during activation sequence', error: error.message });
   }
 };
 
@@ -67,7 +82,7 @@ export const loginAdmin = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role, // Frontend reads this to know where to navigate
+        role: user.role, 
         branch: user.branch
       },
     });
@@ -79,7 +94,6 @@ export const loginAdmin = async (req, res) => {
 // Fetch all onboarded branch users
 export const getBranchUsers = async (req, res) => {
   try {
-    // Calls the model query to grab from the PostgreSQL users table
     const users = await getAllBranchUsers();
     res.status(200).json(users);
   } catch (error) {
