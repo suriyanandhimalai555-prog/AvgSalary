@@ -109,3 +109,19 @@ export const getAdminMasterLedger = async (req, res) => {
     return res.status(500).json({ message: 'Failed fetching master administrative dataset matrices.' });
   }
 };
+
+export const getEmployeeList = async (req, res) => {
+  try {
+    // Fetches unique names and their existing details to populate the dropdown
+    const query = `
+      SELECT DISTINCT ON (employee_name) 
+      employee_name, designation, bank_name, account_number, ifsc_code 
+      FROM employee_salaries 
+      ORDER BY employee_name, created_at DESC;
+    `;
+    const result = await pool.query(query);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching employee list' });
+  }
+};
