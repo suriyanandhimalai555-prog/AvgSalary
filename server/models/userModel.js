@@ -34,3 +34,15 @@ export const getAllBranchUsers = async () => {
   const { rows } = await pool.query(query);
   return rows;
 };
+
+export const updateUserPassword = async (userId, hashedPassword) => {
+  const query = `
+    UPDATE users 
+    SET password = $1 
+    WHERE id = $2 
+    RETURNING id;
+  `;
+  const values = [hashedPassword, userId];
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+};

@@ -19,6 +19,7 @@ const UserLayout = () => {
     const menuItems = [
         { path: '/user/data-entry', name: 'Data Entry', icon: <Database size={18} /> },
         { path: '/user/view-data', name: 'View Submissions', icon: <Table size={18} /> },
+        { path: '/user/profile', name: 'Profile', icon: <User size={18} /> },
     ];
 
     return (

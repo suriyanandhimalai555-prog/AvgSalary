@@ -76,8 +76,8 @@ const Login = () => {
                             src={Logo}
                             alt="AVG Logo"
                         />
-                        <span className="text-xl font-black tracking-wider text-slate-900">
-                            AVG SYSTEM
+                        <span className="text-xl text-center font-black tracking-wider text-slate-900">
+                            AVG SALARY MANAGEMENT SYSTEM
                         </span>
                     </div>
 
@@ -136,9 +136,9 @@ const Login = () => {
                                 </label>
                             </div>
                             <div className="text-xs">
-                                <a href="#" className="font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
+                                {/* <a href="#" className="font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
                                     Forgot password?
-                                </a>
+                                </a> */}
                             </div>
                         </div>
 

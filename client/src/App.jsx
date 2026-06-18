@@ -12,6 +12,7 @@ import AllBranchData from './pages/AllBranchData';
 import UserLayout from './layouts/UserLayout';
 import DataEntry from './pages/DataEntry';
 import ViewData from './pages/ViewData';
+import UserProfile from './pages/UserProfile';
 
 // protected route
 import ProtectedRoute from './components/ProtectedRoute';
@@ -37,6 +38,7 @@ const App = () => {
             <Route index element={<Navigate to="/user/data-entry" replace />} />
             <Route path="data-entry" element={<DataEntry />} />
             <Route path="view-data" element={<ViewData />} />
+            <Route path="profile" element={<UserProfile />} />
           </Route>
         </Route>
 

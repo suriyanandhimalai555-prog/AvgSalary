@@ -1,7 +1,7 @@
 // src/controllers/authController.js
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { createUser, findUserByEmail, getAllBranchUsers } from '../models/userModel.js';
+import { createUser, findUserByEmail, getAllBranchUsers, updateUserPassword } from '../models/userModel.js';
 import { sendOnboardingEmail } from '../utils/emailService.js'; // Import your utility helper here
 
 // Register Admin (Via Postman)
@@ -98,5 +98,75 @@ export const getBranchUsers = async (req, res) => {
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: 'Server Error fetching directory', error: error.message });
+  }
+};
+
+// Get Current Logged In User Profile Data
+export const getUserProfile = async (req, res) => {
+  try {
+    // req.user is automatically populated by your 'protect' middleware
+    const user = req.user;
+    if (!user) return res.status(404).json({ message: 'User profile not found' });
+
+    res.status(200).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      branch: user.branch,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error fetching user profile', error: error.message });
+  }
+};
+
+// Change Password Endpoint
+export const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  try {
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Both current and new passwords are required' });
+    }
+
+    // 1. Grab the user's email from the validated token object
+    const userEmail = req.user?.email;
+    if (!userEmail) {
+      return res.status(401).json({ message: 'Unauthorized session' });
+    }
+
+    // 2. Fetch a fresh, complete user record from the DB to ensure 'password' hash is present
+    const fullUser = await findUserByEmail(userEmail);
+    if (!fullUser) {
+      return res.status(404).json({ message: 'User record not found in directory' });
+    }
+
+    // 3. Compare submitted current password against the database hash
+    const isMatch = await bcrypt.compare(currentPassword, fullUser.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'The current password you entered is incorrect' });
+    }
+
+    // 4. Prevent updating to the exact same password
+    const isSamePassword = await bcrypt.compare(newPassword, fullUser.password);
+    if (isSamePassword) {
+      return res.status(400).json({ message: 'New password cannot be the same as your current password' });
+    }
+
+    // 5. Encrypt and save the new password string
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Call your model updater function
+    await updateUserPassword(fullUser.id, hashedPassword);
+
+    res.status(200).json({ message: 'Password updated successfully!' });
+  } catch (error) {
+    // Look at your VS Code / Node terminal when this prints!
+    console.error("SYSTEM ERROR DURING PASSWORD MODIFICATION:", error);
+    
+    res.status(500).json({ 
+      message: 'Internal Server Error modifying security profile', 
+      error: error.message 
+    });
   }
 };
