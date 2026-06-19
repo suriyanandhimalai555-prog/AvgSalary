@@ -17,6 +17,7 @@ const DataEntry = () => {
     bankName: '',
     accountNumber: '',
     ifscCode: '',
+    salaryMonth: new Date().toISOString().slice(0, 7),
     renewal: '',
     newAmount: '', 
     goldCoin: '',
@@ -41,11 +42,14 @@ const DataEntry = () => {
   const fetchExistingProfiles = async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/api/salary/my-submissions', {
-        headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        }
-      });
+      const response = await fetch(
+  'http://localhost:5000/api/salary/employee-list',
+  {
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  }
+);
       if (response.ok) {
         const data = await response.json();
         setExistingUsers(data);
@@ -115,6 +119,7 @@ const DataEntry = () => {
       bankName: formData.bankName,
       accountNumber: formData.accountNumber,
       ifscCode: formData.ifscCode,
+      salaryMonth: formData.salaryMonth,
       renewal: getNum(formData.renewal),
       newAmount: getNum(formData.newAmount),
       goldCoin: getNum(formData.goldCoin),
@@ -341,6 +346,19 @@ const DataEntry = () => {
                 />
               </div>
             </div>
+
+            <div>
+  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+    Salary Month
+  </label>
+  <input
+    type="month"
+    name="salaryMonth"
+    value={formData.salaryMonth}
+    onChange={handleChange}
+    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
+  />
+</div>
 
             {/* IFSC CODE FIELD */}
             <div>

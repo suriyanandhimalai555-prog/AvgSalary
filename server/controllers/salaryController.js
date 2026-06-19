@@ -1,20 +1,27 @@
+import pool from '../config/db.js';
 import * as SalaryModel from '../models/salaryModel.js';
 
 export const submitSalary = async (req, res) => {
   try {
     const {
-      employeeName, designation, bankName, accountNumber, ifscCode
+      employeeName, designation, bankName, accountNumber, ifscCode, salaryMonth
     } = req.body;
 
     if (!employeeName || !designation || !bankName || !accountNumber || !ifscCode) {
       return res.status(400).json({ message: 'Missing mandatory operational entry values.' });
     }
 
-    // Extracting user ID safely out of verified request session headers
-    const userId = req.user.id; 
+    const userId = req.user.id;
 
-    const newRecord = await SalaryModel.createSalaryRecord(req.body, userId);
-    return res.status(201).json({ message: 'Ledger matrix saved successfully!', data: newRecord });
+    const newRecord = await SalaryModel.createSalaryRecord(
+      { ...req.body, salaryMonth },
+      userId
+    );
+
+    return res.status(201).json({
+      message: 'Ledger matrix saved successfully!',
+      data: newRecord
+    });
   } catch (error) {
     console.error('Error in submitSalary controller:', error);
     return res.status(500).json({ message: 'Internal server error processing compilation matrix.' });
@@ -23,12 +30,9 @@ export const submitSalary = async (req, res) => {
 
 export const getMySubmissions = async (req, res) => {
   try {
-    // Read user id directly from verification state token layer
-    const userId = req.user.id; 
-    
+    const userId = req.user.id;
     const rows = await SalaryModel.getAllSalaryRecords(userId);
-    
-    // Formatting snake_case from DB into camelCase for frontend components
+
     const formattedData = rows.map(item => ({
       id: item.id,
       employeeName: item.employee_name,
@@ -36,6 +40,7 @@ export const getMySubmissions = async (req, res) => {
       bankName: item.bank_name,
       accountNumber: item.account_number,
       ifscCode: item.ifsc_code,
+      salaryMonth: item.salary_month,
       renewal: item.renewal,
       newAmount: item.new_amount,
       goldCoin: item.gold_coin,
@@ -66,13 +71,12 @@ export const getMySubmissions = async (req, res) => {
 
 export const getAdminMasterLedger = async (req, res) => {
   try {
-    // Explicitly verify caller status via security check layer
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied. Administrative node privileges required.' });
     }
 
     const rows = await SalaryModel.getAllRecordsForAdmin();
-    
+
     const formattedData = rows.map(item => ({
       id: item.id,
       branch: item.branch,
@@ -82,6 +86,7 @@ export const getAdminMasterLedger = async (req, res) => {
       bankName: item.bank_name,
       accountNumber: item.account_number,
       ifscCode: item.ifsc_code,
+      salaryMonth: item.salary_month,
       renewal: item.renewal,
       newAmount: item.new_amount,
       goldCoin: item.gold_coin,
@@ -112,16 +117,48 @@ export const getAdminMasterLedger = async (req, res) => {
 
 export const getEmployeeList = async (req, res) => {
   try {
-    // Fetches unique names and their existing details to populate the dropdown
-    const query = `
-      SELECT DISTINCT ON (employee_name) 
-      employee_name, designation, bank_name, account_number, ifsc_code 
-      FROM employee_salaries 
-      ORDER BY employee_name, created_at DESC;
-    `;
-    const result = await pool.query(query);
-    res.status(200).json(result.rows);
+    const userId = req.user.id;
+
+    const rows = await SalaryModel.getEmployeeList(userId);
+
+    res.status(200).json(
+      rows.map((row) => ({
+        employeeName: row.employee_name,
+        designation: row.designation,
+        bankName: row.bank_name,
+        accountNumber: row.account_number,
+        ifscCode: row.ifsc_code
+      }))
+    );
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching employee list' });
+    console.error('Error in getEmployeeList controller:', error);
+    res.status(500).json({
+      message: 'Error fetching employee list',
+    });
+  }
+};
+
+export const getEmployeeWiseSubmissions = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const rows = await SalaryModel.getEmployeeWiseRecords(userId);
+
+    const formattedData = rows.map((item) => ({
+      employeeName: item.employee_name,
+      designation: item.designation,
+      bankName: item.bank_name,
+      accountNumber: item.account_number,
+      ifscCode: item.ifsc_code,
+      months: item.months,
+    }));
+
+    return res.status(200).json(formattedData);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Failed fetching employee records",
+    });
   }
 };
